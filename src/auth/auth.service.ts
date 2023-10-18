@@ -8,12 +8,15 @@ import { AuthDto } from './dto';
 import * as bcrypt from 'bcrypt';
 import { Tokens } from './types';
 import { JwtService } from '@nestjs/jwt';
+import { ErrorMessages } from 'src/common/constants/ErrorsMessages.const';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class AuthService {
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
+    private configService: ConfigService,
   ) {}
 
   async signupLocal(dto: AuthDto): Promise<Tokens> {
@@ -75,10 +78,11 @@ export class AuthService {
       },
     });
 
-    if (!user || !user.hashedRt) throw new ForbiddenException('Access Denied');
+    if (!user || !user.hashedRt)
+      throw new ForbiddenException(ErrorMessages.AccessDenied);
 
     const rtMatches = bcrypt.compare(rt, user.hashedRt);
-    if (!rtMatches) throw new ForbiddenException('Access Denied');
+    if (!rtMatches) throw new ForbiddenException(ErrorMessages.AccessDenied);
 
     const tokens = await this.getTokens(user.id, user.email);
     await this.updateRtHash(user.id, tokens.refresh_token);
@@ -98,7 +102,10 @@ export class AuthService {
   }
 
   async hashData(data: string) {
-    return await bcrypt.hash(data, 10);
+    return await bcrypt.hash(
+      data,
+      Number(this.configService.get<string>('BCRYPT_SALT_VALUE')),
+    );
   }
 
   async getTokens(userId: number, email: string): Promise<Tokens> {
@@ -109,7 +116,7 @@ export class AuthService {
           email,
         },
         {
-          secret: 'at-secret',
+          secret: this.configService.get<string>('ACCESS_TOKEN_SECRET'),
           expiresIn: 60 * 15,
         },
       ),
@@ -119,7 +126,7 @@ export class AuthService {
           email,
         },
         {
-          secret: 'rt-secret',
+          secret: this.configService.get<string>('REFRESH_TOKEN_SECRET'),
           expiresIn: 60 * 60 * 24 * 7,
         },
       ),
