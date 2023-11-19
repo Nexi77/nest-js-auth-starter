@@ -4,13 +4,12 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { AuthDto } from './dto';
+import { AuthSignupDto, AuthSignInDto } from './dto';
 import * as bcrypt from 'bcrypt';
 import { Tokens } from './types';
 import { JwtService } from '@nestjs/jwt';
-import { ErrorMessages } from 'src/common/constants/ErrorsMessages.const';
 import { ConfigService } from '@nestjs/config';
-import { ValidationMessages } from 'src/common/validation/messages.validation.enum';
+import { ExceptionMessages } from 'src/common/validation/messages.validation.enum';
 
 @Injectable()
 export class AuthService {
@@ -20,7 +19,7 @@ export class AuthService {
     private configService: ConfigService,
   ) {}
 
-  async signupLocal(dto: AuthDto): Promise<Tokens> {
+  async signupLocal(dto: AuthSignupDto): Promise<Tokens> {
     const hash = await this.hashData(dto.password);
     try {
       const newUser = await this.prisma.user.create({
@@ -33,18 +32,18 @@ export class AuthService {
       await this.updateRtHash(newUser.id, tokens.refresh_token);
       return tokens;
     } catch (ex) {
-      throw new ConflictException(ValidationMessages.EmailExists);
+      throw new ConflictException(ExceptionMessages.EmailExists);
     }
   }
 
-  async signinLocal(dto: AuthDto): Promise<Tokens> {
+  async signinLocal(dto: AuthSignInDto): Promise<Tokens> {
     const user = await this.prisma.user.findUnique({
       where: {
         email: dto.email,
       },
     });
 
-    if (!user) throw new ForbiddenException('Access Denied');
+    if (!user) throw new ForbiddenException(ExceptionMessages.UserNotFound);
 
     const passwordMatches = await bcrypt.compare(dto.password, user.hash);
     if (!passwordMatches) throw new ForbiddenException('Access Denied');
@@ -79,10 +78,11 @@ export class AuthService {
     });
 
     if (!user || !user.hashedRt)
-      throw new ForbiddenException(ErrorMessages.AccessDenied);
+      throw new ForbiddenException(ExceptionMessages.AccessDenied);
 
     const rtMatches = bcrypt.compare(rt, user.hashedRt);
-    if (!rtMatches) throw new ForbiddenException(ErrorMessages.AccessDenied);
+    if (!rtMatches)
+      throw new ForbiddenException(ExceptionMessages.AccessDenied);
 
     const tokens = await this.getTokens(user.id, user.email);
     await this.updateRtHash(user.id, tokens.refresh_token);

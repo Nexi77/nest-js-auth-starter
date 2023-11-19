@@ -6,7 +6,7 @@ import {
 } from 'class-validator';
 import { CustomMatchPasswords } from 'src/common/constraints/match_password.constraint';
 
-export class AuthDto {
+export class AuthSignupDto {
   @IsNotEmpty()
   @IsEmail()
   email: string;
@@ -22,4 +22,13 @@ export class AuthDto {
 
   @Validate(CustomMatchPasswords, ['password'])
   passwordConfirm: string;
+}
+
+export class AuthSignInDto {
+  @IsNotEmpty()
+  @IsEmail()
+  email: string;
+
+  @IsNotEmpty()
+  password: string;
 }
