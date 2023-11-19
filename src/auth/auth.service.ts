@@ -10,6 +10,7 @@ import { Tokens } from './types';
 import { JwtService } from '@nestjs/jwt';
 import { ErrorMessages } from 'src/common/constants/ErrorsMessages.const';
 import { ConfigService } from '@nestjs/config';
+import { ValidationMessages } from 'src/common/validation/messages.validation.enum';
 
 @Injectable()
 export class AuthService {
@@ -32,7 +33,7 @@ export class AuthService {
       await this.updateRtHash(newUser.id, tokens.refresh_token);
       return tokens;
     } catch (ex) {
-      throw new ConflictException();
+      throw new ConflictException(ValidationMessages.EmailExists);
     }
   }
 
